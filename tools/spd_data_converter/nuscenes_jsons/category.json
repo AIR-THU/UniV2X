@@ -1,0 +1,22 @@
+[
+{
+"token": "1fa93b757fc74fb197cdd60001ad8abf",
+"name": "car",
+"description": "Car, Truck, Van, Bus."
+},
+{
+"token": "403fede16c88426885dd73366f16c34a",
+"name": "pedestrian",
+"description": "Pedestrian."
+},
+{
+"token": "bb867e2064014279863c71a29b1eb381",
+"name": "bicycle",
+"description": "Motorcyclist, Cyclist, Tricyclist, Barrowlist."
+},
+{
+"token": "dfd26f200ade4d24b540184e16050022",
+"name": "traffic_cone",
+"description": "TrafficCone."
+}
+]

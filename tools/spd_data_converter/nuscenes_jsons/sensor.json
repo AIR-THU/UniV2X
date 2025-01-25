@@ -1,0 +1,22 @@
+[
+{
+"token": "725903f5b62f56118f4094b46a4470d8",
+"channel": "VEHICLE_CAM_FRONT",
+"modality": "camera"
+},
+{
+"token": "ce89d4f3050b5892b33b3d328c5e82a3",
+"channel": "INFRASTRUCTURE_CAM_V1",
+"modality": "camera"
+},
+{
+"token": "dc8b396651c05aedbb9cdaae573bb567",
+"channel": "LIDAR_TOP",
+"modality": "lidar"
+},
+{
+"token": "a89643a5de885c6486df2232dc954da2",
+"channel": "INFRASTRUCTURE_LIDAR_V1",
+"modality": "lidar"
+}
+]

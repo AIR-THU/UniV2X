@@ -1,0 +1,22 @@
+[
+{
+"description": "visibility of whole object is between 0 and 10%",
+"token": "1",
+"level": "v0-10"
+},
+{
+"description": "visibility of whole object is between 10 and 50%",
+"token": "2",
+"level": "v10-50"
+},
+{
+"description": "visibility of whole object is between 50 and 90%",
+"token": "3",
+"level": "v50-90"
+},
+{
+"description": "visibility of whole object is between 90 and 100%",
+"token": "4",
+"level": "v90-100"
+}
+]
