@@ -1,7 +1,7 @@
 
 # V2X-Seq-SPD Data Preparation
 
-We use [V2X-Seq-SPD](https://thudair.baai.ac.cn/coop-forecast) dataset, which is the first real-world sequential V2X perception dataset. You can use the following scripts to perform data processing.
+We use [V2X-Seq-SPD](https://drive.google.com/drive/folders/1gnrw5llXAIxuB9sEKKCm6xTaJ5HQAw2e?usp=sharing) dataset, which is the first real-world sequential V2X perception dataset. You can use the following scripts to perform data processing.
 
 ## Step 1: Download V2X-Seq-SPD
 Download V2X-Seq-SPD and organize these files as follows:
