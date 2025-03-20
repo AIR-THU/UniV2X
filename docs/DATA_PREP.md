@@ -34,7 +34,7 @@ Create new V2X-Seq-SPD for following usage.
 python tools/spd_data_converter/gen_example_data.py
     --input YOUR_V2X-Seq-SPD_ROOT \
     --output ./datasets/V2X-Seq-SPD-New \
-    --sequences 0010 0016 0018 0022 0023 0025 0029 0030 0032 0033 0034 0035 0014 0015 0017 0020 0021 \ # We create part of new V2X-Seq-SPD for the fast test. If you want to generate whole dataset, just use `--sequences 'all'`.
+    --sequences 'all' \ # You can use '--sequences 0010 0016 0018 0022 0023 0025 0029 0030 0032 0033 0034 0035 0014 0015 0017 0020 0021' to create part of new V2X-Seq-SPD for the fast test.
     --update-label \
     --freq 2
 ```
