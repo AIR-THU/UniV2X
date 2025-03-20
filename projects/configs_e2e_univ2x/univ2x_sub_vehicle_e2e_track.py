@@ -100,7 +100,8 @@ other_agent_names = []
 #                                                        Ego Agent Config                                                                                     #
 #------------------------------------------------------------------------------------------------------------------#
 is_cooperation = False
-is_ego_agent = False
+is_ego_agent = True
+
 model_ego_agent = dict(
     type="UniV2X",
     is_cooperation=is_cooperation,
