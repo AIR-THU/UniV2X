@@ -57,6 +57,8 @@ class SPDE2EDataset(NuScenesDataset):
                 use_nonlinear_optimizer=False,
                 lane_ann_file=None,
                 eval_mod=None,
+                inference_wo_label=False,
+                command_file=None,
 
                 # For debug
                 is_debug=False,
@@ -79,6 +81,8 @@ class SPDE2EDataset(NuScenesDataset):
                 *args,
                 **kwargs):
         # init before super init since it is called in parent class
+        self.inference_wo_label = inference_wo_label
+        self.command_file = command_file
         self.split_datas_file = split_datas_file
         self.v2x_side = v2x_side
         if self.v2x_side not in ['vehicle_side', 'infrastructure_side', 'cooperative', '']:
@@ -512,6 +516,10 @@ class SPDE2EDataset(NuScenesDataset):
                     from lidar to different cameras.
                 - ann_info (dict): Annotation info.
         """
+
+        if self.inference_wo_label:
+            return self.get_data_info_wo_label(index, agent_name)
+
         if agent_name == 'ego_vehicle':
             info = self.data_infos[index]
         else:
@@ -699,6 +707,146 @@ class SPDE2EDataset(NuScenesDataset):
         # generate detection labels for current + future frames
         input_dict['occ_future_ann_infos'] = \
             self.get_future_detection_infos(future_frames)
+        return input_dict
+
+    def get_data_info_wo_label(self, index, agent_name='ego_vehicle'):
+        """Get data info according to the given index.
+
+        Args:
+            index (int): Index of the sample data to get.
+        Returns:
+            dict: Data information that will be passed to the data \
+                preprocessing pipelines. It includes the following keys:
+
+                - sample_idx (str): Sample index.
+                - pts_filename (str): Filename of point clouds.
+                - sweeps (list[dict]): Infos of sweeps.
+                - timestamp (float): Sample timestamp.
+                - img_filename (str, optional): Image filename.
+                - lidar2img (list[np.ndarray], optional): Transformations \
+                    from lidar to different cameras.
+                - ann_info (dict): Annotation info.
+        """
+
+        if agent_name == 'ego_vehicle':
+            info = self.data_infos[index]
+        else:
+            info = self.data_infos[index]['other_agent_info_dict'][agent_name]
+
+        if 'token_inf' in info:
+            token_inf = info['token_inf']
+        else:
+            token_inf = -1
+
+        # standard protocal modified from SECOND.Pytorch
+        input_dict = dict(
+            sample_idx=info['token'],
+            sample_idx_inf=token_inf,
+            pts_filename=info['lidar_path'],
+            sweeps=info['sweeps'],
+            ego2global_translation=info['ego2global_translation'],
+            ego2global_rotation=info['ego2global_rotation'],
+            prev_idx=info['prev'],
+            next_idx=info['next'],
+            scene_token=info['scene_token'],
+            can_bus=info['can_bus'],
+            frame_idx=info['frame_idx'],
+            timestamp=info['timestamp'] / 1e6
+        )
+
+        l2e_r = info['lidar2ego_rotation']
+        l2e_t = info['lidar2ego_translation']
+        e2g_r = info['ego2global_rotation']
+        e2g_t = info['ego2global_translation']
+        l2e_r_mat = Quaternion(l2e_r).rotation_matrix
+        e2g_r_mat = Quaternion(e2g_r).rotation_matrix
+
+        l2g_r_mat = l2e_r_mat.T @ e2g_r_mat.T
+        l2g_t = l2e_t @ e2g_r_mat.T + e2g_t
+
+        input_dict.update(
+            dict(
+                l2g_r_mat=l2g_r_mat.astype(np.float32),
+                l2g_t=l2g_t.astype(np.float32)))
+        
+        if 'VehLidar2InfLidar_rotation' in info:            
+            veh2inf_r = info['VehLidar2InfLidar_rotation']
+        if 'VehLidar2InfLidar_translation' in info:
+            veh2inf_t = info['VehLidar2InfLidar_translation']
+        
+        veh2inf_rt = np.eye(4)
+        if 'VehLidar2InfLidar_rotation' in info and 'VehLidar2InfLidar_translation' in info:        
+            veh2inf_rt[:3, :3] = veh2inf_r
+            veh2inf_rt[:3, 3] = veh2inf_t
+            veh2inf_rt = veh2inf_rt.T
+        input_dict.update(dict(veh2inf_rt=veh2inf_rt.astype(np.float32)))
+
+        if self.modality['use_camera']:
+            image_paths = []
+            lidar2img_rts = []
+            lidar2cam_rts = []
+            cam_intrinsics = []
+            for cam_type, cam_info in info['cams'].items():
+                image_paths.append(cam_info['data_path'])
+                # obtain lidar to image transformation matrix
+                lidar2cam_r = np.linalg.inv(cam_info['sensor2lidar_rotation'])
+                lidar2cam_t = cam_info[
+                    'sensor2lidar_translation'] @ lidar2cam_r.T
+                lidar2cam_rt = np.eye(4)
+                lidar2cam_rt[:3, :3] = lidar2cam_r.T
+                lidar2cam_rt[3, :3] = -lidar2cam_t
+                intrinsic = cam_info['cam_intrinsic']
+                viewpad = np.eye(4)
+                viewpad[:intrinsic.shape[0], :intrinsic.shape[1]] = intrinsic
+                lidar2img_rt = (viewpad @ lidar2cam_rt.T)
+                lidar2img_rts.append(lidar2img_rt)
+
+                cam_intrinsics.append(viewpad)
+                lidar2cam_rts.append(lidar2cam_rt.T)
+
+            input_dict.update(
+                dict(
+                    img_filename=image_paths,
+                    lidar2img=lidar2img_rts,
+                    cam_intrinsic=cam_intrinsics,
+                    lidar2cam=lidar2cam_rts,
+                ))
+        
+        if agent_name != 'ego_vehicle':
+            input_dict['command'] = [torch.tensor([2])]
+        else:
+            command_list = mmcv.load(self.command_file)
+            input_dict['command'] = command_list[info['token']]
+
+        rotation = Quaternion(input_dict['ego2global_rotation'])
+        translation = input_dict['ego2global_translation']
+        can_bus = input_dict['can_bus']
+        can_bus[:3] = translation
+        can_bus[3:7] = rotation
+        patch_angle = quaternion_yaw(rotation) / np.pi * 180
+        if patch_angle < 0:
+            patch_angle += 360
+        can_bus[-2] = patch_angle / 180 * np.pi
+        can_bus[-1] = patch_angle
+
+        prev_indices, future_indices = self.occ_get_temporal_indices(
+            index, self.occ_receptive_field, self.occ_n_future)
+
+        # ego motions of all frames are needed
+        all_frames = prev_indices + [index] + future_indices
+
+        has_invalid_frame = -1 in all_frames[:self.occ_only_total_frames]
+        input_dict['occ_has_invalid_frame'] = has_invalid_frame
+        input_dict['occ_img_is_valid'] = np.array(all_frames) >= 0
+
+        # might have None if not in the same sequence
+        future_frames = [index] + future_indices
+
+        # get lidar to ego to global transforms for each curr and fut index
+        occ_transforms = self.occ_get_transforms(
+            future_frames)  # might have None
+        input_dict.update(occ_transforms)
+
         return input_dict
 
     def get_future_detection_infos(self, future_frames):

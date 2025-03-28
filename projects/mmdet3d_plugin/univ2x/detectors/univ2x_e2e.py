@@ -276,11 +276,11 @@ class UniV2X(UniV2XTrack):
                      gt_lane_labels=None,
                      gt_lane_masks=None,
                      rescale=False,
-                     # planning gt(for evaluation only)
+                     #  planning gt(for evaluation only)
                      sdc_planning=None,
                      sdc_planning_mask=None,
                      command=None,
- 
+                     w_label=True,
                      # Occ_gt (for evaluation only)
                      gt_segmentation=None,
                      gt_instance=None, 
@@ -336,7 +336,15 @@ class UniV2X(UniV2XTrack):
         bev_embed = result_track[0]["bev_embed"]
 
         if self.with_seg_head:
-            result_seg, drivable_gt, drivable_pred =  self.seg_head.forward_test(bev_embed, gt_lane_labels, gt_lane_masks, img_metas, rescale, other_agent_results=other_agent_results)
+            result_seg, drivable_gt, drivable_pred =  self.seg_head.forward_test(
+                bev_embed, 
+                gt_lane_labels, 
+                gt_lane_masks=gt_lane_masks, 
+                img_metas=img_metas, 
+                rescale=rescale, 
+                w_label=w_label, 
+                other_agent_results=other_agent_results
+            )
 
         if self.with_motion_head:
             result_motion, outs_motion = self.motion_head.forward_test(bev_embed, outs_track=result_track[0], outs_seg=result_seg[0])
@@ -352,23 +360,29 @@ class UniV2X(UniV2XTrack):
                 gt_segmentation=gt_segmentation,
                 gt_instance=gt_instance,
                 gt_img_is_valid=gt_occ_img_is_valid,
+                w_label=w_label,
                 other_agent_results=other_agent_results
             )
             result[0]['occ'] = outs_occ
         
         if self.with_planning_head:
-            planning_gt=dict(
-                segmentation=gt_segmentation,
-                sdc_planning=sdc_planning,
-                sdc_planning_mask=sdc_planning_mask,
-                command=command,
-                drivable_gt=drivable_gt, # for out of boundary evaluation
-            )
             result_planning = self.planning_head.forward_test(bev_embed, outs_motion, outs_occ, command, drivable_pred)
-            result[0]['planning'] = dict(
-                planning_gt=planning_gt,
-                result_planning=result_planning,
-            )
+            if w_label:
+                planning_gt=dict(
+                    segmentation=gt_segmentation,
+                    sdc_planning=sdc_planning,
+                    sdc_planning_mask=sdc_planning_mask,
+                    command=command,
+                    drivable_gt=drivable_gt, # for out of boundary evaluation
+                )
+                result[0]['planning'] = dict(
+                    planning_gt=planning_gt,
+                    result_planning=result_planning,
+                )
+            else:
+                result[0]['planning'] = dict(
+                    result_planning=result_planning,
+                )
 
         pop_track_list = ['prev_bev', 'bev_pos', 'bev_embed', 'track_query_embeddings', 'sdc_embedding']
         result_track[0] = pop_elem_in_result(result_track[0], pop_track_list)

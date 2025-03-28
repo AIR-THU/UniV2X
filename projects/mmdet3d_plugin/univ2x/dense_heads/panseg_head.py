@@ -1072,6 +1072,7 @@ class PansegformerHead(SegDETRHead):
                     gt_lane_masks=None,
                     img_metas=None,
                     rescale=False,
+                    w_label=True,
                     other_agent_results=None):
         bbox_list = [dict() for i in range(len(img_metas))]
 
@@ -1098,39 +1099,43 @@ class PansegformerHead(SegDETRHead):
 
         with torch.no_grad():
             drivable_pred = results[0]['drivable']
-            drivable_gt = gt_lane_masks[0][0, -1]
-            drivable_iou, drivable_intersection, drivable_union = IOU(drivable_pred.view(1, -1), drivable_gt.view(1, -1))
+            if w_label:
+                drivable_gt = gt_lane_masks[0][0, -1]
+                drivable_iou, drivable_intersection, drivable_union = IOU(drivable_pred.view(1, -1), drivable_gt.view(1, -1))
 
-            lane_pred = results[0]['lane']
-            lanes_pred = (results[0]['lane'].sum(0) > 0).int()
-            lanes_gt = (gt_lane_masks[0][0][:-1].sum(0) > 0).int()
-            lanes_iou, lanes_intersection, lanes_union = IOU(lanes_pred.view(1, -1), lanes_gt.view(1, -1))
+                lane_pred = results[0]['lane']
+                lanes_pred = (results[0]['lane'].sum(0) > 0).int()
+                lanes_gt = (gt_lane_masks[0][0][:-1].sum(0) > 0).int()
+                lanes_iou, lanes_intersection, lanes_union = IOU(lanes_pred.view(1, -1), lanes_gt.view(1, -1))
 
-            divider_gt = (gt_lane_masks[0][0][gt_lane_labels[0][0] == 0].sum(0) > 0).int()
-            crossing_gt = (gt_lane_masks[0][0][gt_lane_labels[0][0] == 1].sum(0) > 0).int()
-            contour_gt = (gt_lane_masks[0][0][gt_lane_labels[0][0] == 2].sum(0) > 0).int()
-            divider_iou, divider_intersection, divider_union = IOU(lane_pred[0].view(1, -1), divider_gt.view(1, -1))
-            crossing_iou, crossing_intersection, crossing_union = IOU(lane_pred[1].view(1, -1), crossing_gt.view(1, -1))
-            contour_iou, contour_intersection, contour_union = IOU(lane_pred[2].view(1, -1), contour_gt.view(1, -1))
+                divider_gt = (gt_lane_masks[0][0][gt_lane_labels[0][0] == 0].sum(0) > 0).int()
+                crossing_gt = (gt_lane_masks[0][0][gt_lane_labels[0][0] == 1].sum(0) > 0).int()
+                contour_gt = (gt_lane_masks[0][0][gt_lane_labels[0][0] == 2].sum(0) > 0).int()
+                divider_iou, divider_intersection, divider_union = IOU(lane_pred[0].view(1, -1), divider_gt.view(1, -1))
+                crossing_iou, crossing_intersection, crossing_union = IOU(lane_pred[1].view(1, -1), crossing_gt.view(1, -1))
+                contour_iou, contour_intersection, contour_union = IOU(lane_pred[2].view(1, -1), contour_gt.view(1, -1))
 
-            ret_iou = {'drivable_intersection': drivable_intersection,
-                       'drivable_union': drivable_union,
-                       'lanes_intersection': lanes_intersection,
-                       'lanes_union': lanes_union,
-                       'divider_intersection': divider_intersection,
-                       'divider_union': divider_union,
-                       'crossing_intersection': crossing_intersection,
-                       'crossing_union': crossing_union,
-                       'contour_intersection': contour_intersection,
-                       'contour_union': contour_union,
-                       'drivable_iou': drivable_iou,
-                       'lanes_iou': lanes_iou,
-                       'divider_iou': divider_iou,
-                       'crossing_iou': crossing_iou,
-                       'contour_iou': contour_iou}
+                ret_iou = {'drivable_intersection': drivable_intersection,
+                        'drivable_union': drivable_union,
+                        'lanes_intersection': lanes_intersection,
+                        'lanes_union': lanes_union,
+                        'divider_intersection': divider_intersection,
+                        'divider_union': divider_union,
+                        'crossing_intersection': crossing_intersection,
+                        'crossing_union': crossing_union,
+                        'contour_intersection': contour_intersection,
+                        'contour_union': contour_union,
+                        'drivable_iou': drivable_iou,
+                        'lanes_iou': lanes_iou,
+                        'divider_iou': divider_iou,
+                        'crossing_iou': crossing_iou,
+                        'contour_iou': contour_iou}
+            else:
+                drivable_gt = None
         for result_dict, pts_bbox in zip(bbox_list, results):
             result_dict['pts_bbox'] = pts_bbox
-            result_dict['ret_iou'] = ret_iou
+            if w_label:
+                result_dict['ret_iou'] = ret_iou
             result_dict['args_tuple'] = pred_seg_dict['args_tuple']
 
         if not self.is_ego_agent and self.return_lane_query:

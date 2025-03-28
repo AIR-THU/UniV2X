@@ -443,21 +443,21 @@ class OccHead(BaseModule):
                     gt_segmentation=None,
                     gt_instance=None,
                     gt_img_is_valid=None,
+                    w_label=True,
                     other_agent_results=None,
                 ):
-        gt_segmentation, gt_instance, gt_img_is_valid = self.get_occ_labels(gt_segmentation, gt_instance, gt_img_is_valid)
-
+        
         out_dict = dict()
-        out_dict['seg_gt']  = gt_segmentation[:, :1+self.n_future]  # [1, 5, 1, 200, 200]
-        out_dict['ins_seg_gt'] = self.get_ins_seg_gt(gt_instance[:, :1+self.n_future])  # [1, 5, 200, 200]
+
+        if w_label:
+            gt_segmentation, gt_instance, gt_img_is_valid = self.get_occ_labels(gt_segmentation, gt_instance, gt_img_is_valid)
+            out_dict['seg_gt']  = gt_segmentation[:, :1+self.n_future]  # [1, 5, 1, 200, 200]
+            out_dict['ins_seg_gt'] = self.get_ins_seg_gt(gt_instance[:, :1+self.n_future])  # [1, 5, 200, 200]
+
         if no_query:
             b = outs_dict['track_scores'].shape[0] 
-            q = outs_dict['track_scores'].shape[1] 
-            t = out_dict['ins_seg_gt'].shape[1]
-            h = out_dict['ins_seg_gt'].shape[2]
-            w = out_dict['ins_seg_gt'].shape[3]
-            
-            pred_ins_logits = torch.zeros([b,q,t,h,w]).to(bev_feat) # [b, q, t, h, w]
+            q = outs_dict['track_scores'].shape[1]
+            pred_ins_logits = torch.zeros([b,q,5,200,200]).to(bev_feat) # [b, q, t, h, w] hard code
         else:
             ins_query = self.merge_queries(outs_dict, self.detach_query_pos)
             _, pred_ins_logits = self(bev_feat, ins_query=ins_query)
@@ -476,7 +476,7 @@ class OccHead(BaseModule):
         if pred_ins_sigmoid.shape[1] != 0:
             pred_seg_scores = pred_ins_sigmoid.max(1)[0] #[b, t, h, w]
         else:
-            pred_seg_scores = torch.zeros([b,t,h,w]).to(bev_feat) #[b, t, h, w]
+            pred_seg_scores = torch.zeros([b,5,200,200]).to(bev_feat) # [b, t, h, w] hard code
 
         if self.is_ego_agent and self.is_cooperation and other_agent_results:
             for other_agent_name, other_agent_result in other_agent_results.items():
@@ -497,7 +497,8 @@ class OccHead(BaseModule):
                 
                 out_dict['ins_seg_out'] = pred_consistent_instance_seg  # [1, 5, 200, 200]
             else:
-                out_dict['ins_seg_out'] = torch.zeros_like(out_dict['ins_seg_gt']).long()  # [1, 5, 200, 200]
+                device = pred_ins_logits.device
+                out_dict['ins_seg_out'] = torch.zeros([1,5,200,200]).long().to(device)
 
         if not self.is_ego_agent and self.return_occ_data:
             out_dict['univ2x_occ_prob_data'] = pred_seg_scores[0]
