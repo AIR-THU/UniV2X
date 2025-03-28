@@ -22,7 +22,7 @@ class MultiAgent(MVXTwoStageDetector):
                 self.pc_range_dict[name_other_agent] = model_other_agent.pc_range
 
 
-    def forward(self, ego_agent_data=None, other_agent_data_dict={}, return_loss=True, **kwargs):
+    def forward(self, ego_agent_data=None, other_agent_data_dict={}, return_loss=True, w_label=True, **kwargs):
         if return_loss:
             return self.forward_train(ego_agent_data=ego_agent_data,
                                                                 other_agent_data_dict=other_agent_data_dict,
@@ -32,6 +32,7 @@ class MultiAgent(MVXTwoStageDetector):
             return self.forward_test(ego_agent_data=ego_agent_data,
                                                                 other_agent_data_dict=other_agent_data_dict,
                                                                 return_loss=return_loss,
+                                                                w_label=w_label,
                                                                 **kwargs)
 
     def forward_train(self, ego_agent_data=None, other_agent_data_dict={}, return_loss=True, **kwargs):
@@ -55,11 +56,12 @@ class MultiAgent(MVXTwoStageDetector):
 
         return loss
 
-    def forward_test(self, ego_agent_data=None, other_agent_data_dict={}, return_loss=False, **kwargs):
+    def forward_test(self, ego_agent_data=None, other_agent_data_dict={}, w_label=True, return_loss=False, **kwargs):
         other_agent_results = {}
         for name_other_agent in self.other_agent_names:
             other_agent_result = getattr(self, name_other_agent)(
                     return_loss=return_loss,
+                    w_label=w_label,
                     **(other_agent_data_dict[name_other_agent]),
                     **kwargs
             )
@@ -67,6 +69,6 @@ class MultiAgent(MVXTwoStageDetector):
             other_agent_result[0]['pc_range'] = self.pc_range_dict[name_other_agent]
             other_agent_results[name_other_agent] = other_agent_result
 
-        result = self.model_ego_agent(return_loss=return_loss, other_agent_results=other_agent_results, **ego_agent_data, **kwargs)
+        result = self.model_ego_agent(return_loss=return_loss, w_label=w_label, other_agent_results=other_agent_results, **ego_agent_data, **kwargs)
 
         return result
