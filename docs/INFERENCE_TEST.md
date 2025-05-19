@@ -2,8 +2,11 @@
 
 ## Step 1: Prepare V2X-Seq-SPD Testset
 
-The Testset will be released at 00:00 (GMT+8), May 17, 2025.
+The Testset has been released at 18:00 (GMT+8), May 17, 2025.
 Download Testset data and prepare it for inference.
+The preprocess pipeline is similar to preprocessing trainval dataset.
+
+You also needs these two pkls (spd_infos_temporal_test.pkl and spd_command_test.pkl) to run the inference, you can directly download them [here](https://drive.google.com/drive/folders/1qjpq0g9WB0sRQnKCRFQADYv7lybcnbwL) and modify the data path in config (univ2x_coop_e2e_old_mode_inference_wo_label.py).
 
 ## Step 2: Run Inference
 Modify corresponding configs and enviroment configuration in tools/univ2x_inference.sh
